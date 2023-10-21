@@ -3,15 +3,20 @@ use vulkano::swapchain::SurfaceApi;
 use crate::init::{VulkanConfig, VulkanInit};
 use vulkano::{instance::Instance, VulkanLibrary};
 
-use vulkano::{
-    device::{DeviceCreateInfo, QueueCreateInfo},
-    instance::InstanceCreateInfo,
-};
+use vulkano::device::{DeviceCreateInfo, QueueCreateInfo};
 
-use vulkano::device::{Device, QueueFlags};
+use vulkano::device::Device;
 
-use crate::init::NoPhysicalDeviceError;
+use std::sync::Arc;
+use winit::{event_loop::EventLoop, window::WindowBuilder};
+
+use vulkano_win::VkSurfaceBuild;
+
 use crate::init::VulkanInitError;
+use vulkano::{
+    instance::{InstanceCreateInfo, InstanceExtensions},
+    swapchain::Surface,
+};
 #[cfg(all(unix, feature = "wayland"))]
 fn get_surface_api() -> SurfaceApi {
     return SurfaceApi::Wayland;
@@ -39,35 +44,29 @@ fn get_surface_api() -> SurfaceApi {
 
 impl VulkanInit {
     #[cfg(feature = "winit")]
-    pub fn new_winit(vulkan_config: VulkanConfig) -> Result<Self, VulkanInitError> {
+    pub fn new_winit<T>(
+        vulkan_config: VulkanConfig,
+        event_loop: &EventLoop<T>,
+    ) -> Result<(Self, Arc<Surface>), VulkanInitError> {
         let library = VulkanLibrary::new()?;
         let instance_extensions = vulkano_win::required_extensions(&library);
-        let mut instance_create_info = vulkan_config.get_create_instance_info();
 
-        instance_create_info.enabled_extensions = instance_create_info
-            .enabled_extensions
-            .intersection(&instance_extensions);
+        let mut ici = InstanceCreateInfo {
+            ..vulkan_config.get_create_instance_info()
+        };
+        ici.enabled_extensions = InstanceExtensions {
+            ..instance_extensions
+        };
 
-        let instance = Instance::new(library.clone(), instance_create_info)?;
-        let physical_device = instance
-            .enumerate_physical_devices()?
-            .filter(|p| {
-                p.supported_extensions()
-                    .contains(&vulkan_config.get_required_extensions())
-            })
-            .next()
-            .ok_or_else(|| NoPhysicalDeviceError("no physical vulkan device found".to_owned()))?;
+        let instance = Instance::new(library.clone(), ici)?;
 
-        let queue_family_index = physical_device
-            .queue_family_properties()
-            .iter()
-            .enumerate()
-            .position(|(_queue_family_index, queue_family_properties)| {
-                queue_family_properties
-                    .queue_flags
-                    .contains(QueueFlags::GRAPHICS)
-            })
-            .ok_or(VulkanInitError::NoSuitableQueuesFound)? as u32;
+        let surface = WindowBuilder::new().build_vk_surface(&event_loop, instance.clone())?;
+
+        let (physical_device, queue_family_index) = Self::select_physical_device(
+            instance.clone(),
+            &None,
+            vulkan_config.get_required_extensions(),
+        )?;
         let (device, queues) = Device::new(
             physical_device.clone(),
             DeviceCreateInfo {
@@ -82,13 +81,16 @@ impl VulkanInit {
 
         let vec_queues = Vec::from_iter(queues);
 
-        Ok(Self {
-            library: library.clone(),
-            instance: instance.clone(),
-            physical_device: physical_device.clone(),
-            queues: vec_queues,
-            device: device.clone(),
-            config: vulkan_config,
-        })
+        Ok((
+            Self {
+                library: library.clone(),
+                instance: instance.clone(),
+                physical_device: physical_device.clone(),
+                queues: vec_queues,
+                device: device.clone(),
+                config: vulkan_config,
+            },
+            surface.clone(),
+        ))
     }
 }

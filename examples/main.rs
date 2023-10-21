@@ -1,18 +1,15 @@
 use std::error::Error;
 
 use vulkan_renderer::init::VulkanInit;
-use vulkano_win::VkSurfaceBuild;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
-    window::{Window, WindowBuilder},
+    window::Window,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let init = VulkanInit::new_winit()?;
-
     let event_loop = EventLoop::new();
-    let surface = WindowBuilder::new().build_vk_surface(&event_loop, init.instance.clone())?;
+    let (init, surface) = VulkanInit::new_winit(Default::default(), &event_loop)?;
 
     let _window = surface
         .object()
