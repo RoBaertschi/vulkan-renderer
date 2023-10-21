@@ -17,6 +17,7 @@ pub struct VulkanInit {
     pub physical_device: Arc<PhysicalDevice>,
     pub device: Arc<Device>,
     pub queues: Vec<Arc<Queue>>,
+    pub config: VulkanConfig,
 }
 
 impl VulkanInit {
@@ -62,6 +63,7 @@ impl VulkanInit {
             physical_device: physical_device.clone(),
             queues: vec_queues,
             device: device.clone(),
+            config: vulkan_config,
         })
     }
 }
@@ -84,7 +86,7 @@ pub enum VulkanInitError {
 
 #[derive(Error, Debug)]
 #[error("{}", .0)]
-pub struct NoPhysicalDeviceError(String);
+pub struct NoPhysicalDeviceError(pub String);
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct VulkanConfig {

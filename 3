@@ -1,6 +1,6 @@
 use vulkano::swapchain::SurfaceApi;
 
-use crate::init::{VulkanConfig, VulkanInit};
+use crate::init::{VulkanInit, VulkanConfig};
 use vulkano::{instance::Instance, VulkanLibrary};
 
 use vulkano::{
@@ -8,9 +8,6 @@ use vulkano::{
     instance::InstanceCreateInfo,
 };
 
-use vulkano::device::{Device, QueueFlags};
-
-use crate::init::NoPhysicalDeviceError;
 use crate::init::VulkanInitError;
 #[cfg(all(unix, feature = "wayland"))]
 fn get_surface_api() -> SurfaceApi {
@@ -39,16 +36,11 @@ fn get_surface_api() -> SurfaceApi {
 
 impl VulkanInit {
     #[cfg(feature = "winit")]
-    pub fn new_winit(vulkan_config: VulkanConfig) -> Result<Self, VulkanInitError> {
+    pub fn new_winit() -> Result<Self, VulkanInitError> {
         let library = VulkanLibrary::new()?;
         let instance_extensions = vulkano_win::required_extensions(&library);
-        let mut instance_create_info = vulkan_config.get_create_instance_info();
-
-        instance_create_info.enabled_extensions = instance_create_info
-            .enabled_extensions
-            .intersection(&instance_extensions);
-
-        let instance = Instance::new(library.clone(), instance_create_info)?;
+        let library = VulkanLibrary::new()?;
+        let instance = Instance::new(library.clone(), vulkan_config.get_create_instance_info())?;
         let physical_device = instance
             .enumerate_physical_devices()?
             .filter(|p| {
@@ -90,5 +82,5 @@ impl VulkanInit {
             device: device.clone(),
             config: vulkan_config,
         })
-    }
+
 }
