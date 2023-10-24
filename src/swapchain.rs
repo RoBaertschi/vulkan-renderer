@@ -14,8 +14,8 @@ use winit::window::Window;
 use crate::init::VulkanInit;
 
 pub struct VulkanSwapChain {
-    swap_chain: Arc<Swapchain>,
-    images: Vec<Arc<SwapchainImage>>,
+    pub swap_chain: Arc<Swapchain>,
+    pub images: Vec<Arc<SwapchainImage>>,
 }
 
 impl VulkanSwapChain {

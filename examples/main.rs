@@ -2,8 +2,10 @@ use std::error::Error;
 
 use vulkan_renderer::{
     init::{VulkanConfig, VulkanInit},
+    renderpass::VulkanRenderPass,
     swapchain::VulkanSwapChain,
 };
+use vulkano::pipeline::graphics::viewport::Viewport;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
@@ -27,7 +29,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         .downcast::<Window>()
         .unwrap();
 
-    let swapchain = VulkanSwapChain::new_with_init(&init, surface.clone(), &window)?;
+    let swap_chain = VulkanSwapChain::new_with_init(&init, surface.clone(), &window)?;
+
+    let render_pass = VulkanRenderPass::new(
+        init.device.clone(),
+        swap_chain.swap_chain.clone(),
+        Viewport {
+            origin: [0.0, 0.0],
+            dimensions: [0.0, 0.0],
+            depth_range: 0.0..1.0,
+        },
+    );
+
     event_loop.run(event_loop_handler)
 }
 
