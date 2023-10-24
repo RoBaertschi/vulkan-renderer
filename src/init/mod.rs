@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, default};
 use thiserror::Error;
 use vulkano::{
     device::{
@@ -40,6 +40,7 @@ impl VulkanInit {
                     queue_family_index,
                     ..Default::default()
                 }],
+                enabled_extensions: vulkan_config.get_required_extensions(),
                 ..Default::default()
             },
         )?;
@@ -80,7 +81,7 @@ impl VulkanInit {
                             q.queue_flags.contains(QueueFlags::GRAPHICS)
                         }
                     })
-                    .map(|q| (p, q as u32))
+                    .map(|i| (p, i as u32))
             })
             .min_by_key(|(p, _)| match p.properties().device_type {
                 PhysicalDeviceType::DiscreteGpu => 0,
@@ -122,9 +123,19 @@ pub enum VulkanInitError {
 #[error("{}", .0)]
 pub struct NoPhysicalDeviceError(pub String);
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VulkanConfig {
-    swap_chain: bool,
+    pub swap_chain: bool,
+    pub support_moltenvk: bool,
+}
+
+impl Default for VulkanConfig {
+    fn default() -> Self {
+        Self {
+            swap_chain: Default::default(),
+            support_moltenvk: true
+        }
+    }
 }
 
 impl VulkanConfig {
@@ -133,6 +144,7 @@ impl VulkanConfig {
             enabled_extensions: InstanceExtensions {
                 ..Default::default()
             },
+            enumerate_portability: true,
             ..Default::default()
         }
     }

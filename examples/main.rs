@@ -1,6 +1,9 @@
 use std::error::Error;
 
-use vulkan_renderer::init::VulkanInit;
+use vulkan_renderer::{
+    init::{VulkanConfig, VulkanInit},
+    swapchain::VulkanSwapChain,
+};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
@@ -9,15 +12,22 @@ use winit::{
 
 fn main() -> Result<(), Box<dyn Error>> {
     let event_loop = EventLoop::new();
-    let (init, surface) = VulkanInit::new_winit(Default::default(), &event_loop)?;
+    let (init, surface) = VulkanInit::new_winit(
+        VulkanConfig {
+            swap_chain: true,
+            ..Default::default()
+        },
+        &event_loop,
+    )?;
 
-    let _window = surface
+    let window = surface
         .object()
         .unwrap()
         .clone()
         .downcast::<Window>()
         .unwrap();
 
+    let swapchain = VulkanSwapChain::new_with_init(&init, surface.clone(), &window)?;
     event_loop.run(event_loop_handler)
 }
 

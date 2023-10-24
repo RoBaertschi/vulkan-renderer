@@ -75,6 +75,7 @@ impl VulkanInit {
                     queue_family_index,
                     ..Default::default()
                 }],
+                enabled_extensions: vulkan_config.get_required_extensions(),
                 ..Default::default()
             },
         )?;
