@@ -30,32 +30,32 @@ fn main() -> Result<(), Box<dyn Error>> {
         .unwrap();
 
     let swap_chain = VulkanSwapChain::new_with_init(&init, surface.clone(), &window)?;
+    let mut viewport = Viewport {
+        origin: [0.0, 0.0],
+        dimensions: [0.0, 0.0],
+        depth_range: 0.0..1.0,
+    };
 
     let render_pass = VulkanRenderPass::new(
         init.device.clone(),
         swap_chain.swap_chain.clone(),
-        Viewport {
-            origin: [0.0, 0.0],
-            dimensions: [0.0, 0.0],
-            depth_range: 0.0..1.0,
-        },
+        &swap_chain.images,
+        &mut viewport,
     );
 
-    event_loop.run(event_loop_handler)
-}
-
-fn event_loop_handler<T>(
-    event: Event<T>,
-    _event_loop_window_target: &EventLoopWindowTarget<T>,
-    control_flow: &mut ControlFlow,
-) {
-    match event {
-        Event::WindowEvent {
-            event: WindowEvent::CloseRequested,
-            ..
-        } => {
-            *control_flow = ControlFlow::Exit;
-        }
-        _ => (),
-    }
+    event_loop.run(
+        |event: Event<_>,
+         _event_loop_window_target: &EventLoopWindowTarget<_>,
+         control_flow: &mut ControlFlow| {
+            match event {
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => {
+                    *control_flow = ControlFlow::Exit;
+                }
+                _ => (),
+            }
+        },
+    )
 }
