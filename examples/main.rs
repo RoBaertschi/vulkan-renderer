@@ -2,10 +2,14 @@ use std::error::Error;
 
 use vulkan_renderer::{
     init::{VulkanConfig, VulkanInit},
-    renderpass::VulkanRenderPass,
+    render_pass::VulkanRenderPass,
     swapchain::VulkanSwapChain,
 };
-use vulkano::pipeline::graphics::viewport::Viewport;
+use vulkano::{
+    pipeline::graphics::viewport::Viewport,
+    swapchain::{SwapchainCreateInfo, SwapchainCreationError},
+    sync::{self, GpuFuture},
+};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
@@ -29,30 +33,74 @@ fn main() -> Result<(), Box<dyn Error>> {
         .downcast::<Window>()
         .unwrap();
 
-    let swap_chain = VulkanSwapChain::new_with_init(&init, surface.clone(), &window)?;
+    let mut swap_chain = VulkanSwapChain::new_with_init(&init, surface.clone(), &window)?;
     let mut viewport = Viewport {
         origin: [0.0, 0.0],
         dimensions: [0.0, 0.0],
         depth_range: 0.0..1.0,
     };
 
-    let render_pass = VulkanRenderPass::new(
-        init.device.clone(),
-        swap_chain.swap_chain.clone(),
-        &swap_chain.images,
+    let render_pass = VulkanRenderPass::new(init.device.clone(), swap_chain.swap_chain.clone())?;
+
+    let mut framebuffers = vulkan_renderer::render_pass::window_size_dependent_setup(
+        &swap_chain.images.clone(),
+        render_pass.render_pass.clone(),
         &mut viewport,
-    );
+    )?;
+
+    let mut recreate_swap_chain = false;
+    let mut previous_frame_end =
+        Some(Box::new(sync::now(init.device.clone())) as Box<dyn GpuFuture>);
 
     event_loop.run(
-        |event: Event<_>,
-         _event_loop_window_target: &EventLoopWindowTarget<_>,
-         control_flow: &mut ControlFlow| {
+        move |event: Event<_>,
+              _event_loop_window_target: &EventLoopWindowTarget<_>,
+              control_flow: &mut ControlFlow| {
             match event {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
                     ..
                 } => {
                     *control_flow = ControlFlow::Exit;
+                }
+                Event::WindowEvent {
+                    event: WindowEvent::Resized(_),
+                    ..
+                } => {
+                    recreate_swap_chain = true;
+                }
+                Event::RedrawEventsCleared => {
+                    previous_frame_end
+                        .as_mut()
+                        .take()
+                        .unwrap()
+                        .cleanup_finished();
+                    // Do some drawing
+                    if recreate_swap_chain {
+                        let image_extent: [u32; 2] = window.inner_size().into();
+
+                        let (new_swapchain, new_images) =
+                            match swap_chain.swap_chain.recreate(SwapchainCreateInfo {
+                                image_extent,
+                                ..swap_chain.swap_chain.create_info()
+                            }) {
+                                Ok(r) => r,
+                                Err(SwapchainCreationError::ImageExtentNotSupported { .. }) => {
+                                    return
+                                }
+                                Err(e) => panic!("failed to recreate swap chain: {:?}", e),
+                            };
+
+                        swap_chain.swap_chain = new_swapchain;
+                        framebuffers = vulkan_renderer::render_pass::window_size_dependent_setup(
+                            &new_images,
+                            render_pass.render_pass.clone(),
+                            &mut viewport,
+                        )
+                        .expect("could not recrate framebuffers after swap chain recreation");
+                        recreate_swap_chain = false;
+                        println!("recreated swap chain successfully");
+                    }
                 }
                 _ => (),
             }

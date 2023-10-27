@@ -3,7 +3,7 @@
 pub mod init;
 pub mod swapchain;
 pub mod memory;
-pub mod renderpass;
+pub mod render_pass;
 
 pub mod window;
 

@@ -15,18 +15,15 @@ use vulkano::{
     swapchain::Swapchain,
 };
 
-
 pub struct VulkanRenderPass {
-    render_pass: Arc<RenderPass>,
+    pub render_pass: Arc<RenderPass>,
 }
 
 impl VulkanRenderPass {
     pub fn new(
         device: Arc<Device>,
         swap_chain: Arc<Swapchain>,
-        images: &[Arc<SwapchainImage>],
-        viewport: &mut Viewport,
-    ) -> Result<(Self, Vec<Arc<Framebuffer>>), CreateVulkanRenderPassError> {
+    ) -> Result<Self, CreateVulkanRenderPassError> {
         let render_pass = vulkano::single_pass_renderpass!(
         device.clone(),
         attachments: {
@@ -43,24 +40,32 @@ impl VulkanRenderPass {
         }
         )?;
 
-        let dimensions = images[0].dimensions().width_height();
-        viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
-
-        let mut framebuffers = vec![];
-
-        for image in images {
-            let view = ImageView::new_default(image.clone())?;
-            framebuffers.push(Framebuffer::new(
-                render_pass.clone(),
-                FramebufferCreateInfo {
-                    attachments: vec![view],
-                    ..Default::default()
-                },
-            )?)
-        }
-
-        Ok((Self { render_pass }, framebuffers))
+        Ok(Self { render_pass })
     }
+}
+
+pub fn window_size_dependent_setup(
+    images: &[Arc<SwapchainImage>],
+    render_pass: Arc<RenderPass>,
+    viewport: &mut Viewport,
+) -> Result<Vec<Arc<Framebuffer>>, CreateVulkanRenderPassError> {
+    let dimensions = images[0].dimensions().width_height();
+    viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
+
+    let mut framebuffers = vec![];
+
+    for image in images {
+        let view = ImageView::new_default(image.clone())?;
+        framebuffers.push(Framebuffer::new(
+            render_pass.clone(),
+            FramebufferCreateInfo {
+                attachments: vec![view],
+                ..Default::default()
+            },
+        )?)
+    }
+
+    Ok(framebuffers)
 }
 
 #[derive(Debug, Error)]
