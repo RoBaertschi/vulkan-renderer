@@ -48,7 +48,7 @@ pub fn window_size_dependent_setup(
     images: &[Arc<SwapchainImage>],
     render_pass: Arc<RenderPass>,
     viewport: &mut Viewport,
-) -> Result<Vec<Arc<Framebuffer>>, CreateVulkanRenderPassError> {
+) -> Result<Vec<Arc<Framebuffer>>, WindowSizeDependentSetupError> {
     let dimensions = images[0].dimensions().width_height();
     viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
 
@@ -66,6 +66,14 @@ pub fn window_size_dependent_setup(
     }
 
     Ok(framebuffers)
+}
+
+#[derive(Debug, Error)]
+pub enum WindowSizeDependentSetupError {
+    #[error("failed to create an image view")]
+    ImageViewCreationError(#[from] ImageViewCreationError),
+    #[error("failed to create a framebuffer")]
+    FramebufferCreationError(#[from] FramebufferCreationError)
 }
 
 #[derive(Debug, Error)]

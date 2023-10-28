@@ -79,27 +79,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if recreate_swap_chain {
                         let image_extent: [u32; 2] = window.inner_size().into();
 
-                        let (new_swapchain, new_images) =
-                            match swap_chain.swap_chain.recreate(SwapchainCreateInfo {
-                                image_extent,
-                                ..swap_chain.swap_chain.create_info()
-                            }) {
-                                Ok(r) => r,
-                                Err(SwapchainCreationError::ImageExtentNotSupported { .. }) => {
-                                    return
-                                }
-                                Err(e) => panic!("failed to recreate swap chain: {:?}", e),
-                            };
-
-                        swap_chain.swap_chain = new_swapchain;
-                        framebuffers = vulkan_renderer::render_pass::window_size_dependent_setup(
-                            &new_images,
-                            render_pass.render_pass.clone(),
+                        recreate_swap_chain = !swap_chain.recreate(
+                            image_extent,
+                            &mut framebuffers,
                             &mut viewport,
-                        )
-                        .expect("could not recrate framebuffers after swap chain recreation");
-                        recreate_swap_chain = false;
-                        println!("recreated swap chain successfully");
+                            render_pass.render_pass.clone(),
+                        ).unwrap();
                     }
                 }
                 _ => (),
