@@ -7,7 +7,7 @@ use vulkan_renderer::{
 };
 use vulkano::{
     pipeline::graphics::viewport::Viewport,
-    swapchain::{SwapchainCreateInfo, SwapchainCreationError},
+    swapchain::{SwapchainCreateInfo, SwapchainCreationError, self, AcquireError},
     sync::{self, GpuFuture},
 };
 use winit::{
@@ -76,6 +76,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                         .unwrap()
                         .cleanup_finished();
                     // Do some drawing
+                    //
+
+                    let (image_index, suboptimal, aquire_future) = match swapchain::acquire_next_image(swap_chain.swap_chain.clone(), None) {
+                        Ok(r) => r,
+                        Err(AcquireError::OutOfDate) => {
+                            recreate_swap_chain = true;
+                            return;
+                        },
+                        Err(e) => panic!("Failed to acquire next image: {:?}", e),
+                    };
+
+                    if suboptimal {
+                        recreate_swap_chain = true;
+                    }
+
                     if recreate_swap_chain {
                         let image_extent: [u32; 2] = window.inner_size().into();
 

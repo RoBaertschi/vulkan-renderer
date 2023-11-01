@@ -40,7 +40,6 @@ fn get_surface_api() -> SurfaceApi {
 fn get_surface_api() -> SurfaceApi {
     return SurfaceApi::Android;
 }
-<<<<<<< Updated upstream
 
 impl VulkanInit {
     #[cfg(feature = "winit")]
@@ -95,5 +94,3 @@ impl VulkanInit {
         ))
     }
 }
-=======
->>>>>>> Stashed changes
